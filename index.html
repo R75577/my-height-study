@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Perception Study</title>
+
+  <!-- jsPsych core styles -->
+  <link rel="stylesheet" href="./jspsych.css" />
+  <link rel="icon" href="data:,"><!-- silence favicon warning -->
+
+  <!-- Layout + slider styling -->
+  <style>
+    html, body { height: 100%; margin: 0; }
+    .jspsych-content { max-width: 1000px; padding: 6px 14px; }
+
+    /* Keep your image large */
+    .preamble-wrap { display: flex; justify-content: center; }
+    .stimulus-image {
+      max-width: 100%;
+      height: auto;
+      max-height: 42vh;   /* big image as you liked */
+      object-fit: contain;
+      border-radius: 8px;
+    }
+    .center { text-align: center; }
+
+    /* Compact the question stack so all 4 fit without scrolling */
+    .q-block { margin-top: 8px; }
+    .q { margin: 8px 0; }
+    .q-title {
+      margin: 0 0 4px;
+      font-weight: 600;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    /* Slider row (like your example) */
+    .slider-row { max-width: 820px; margin: 0 auto 6px; }
+    .slider { width: 100%; }
+
+    /* Tick labels under each slider */
+    .slider-ticks {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0;
+      margin-top: 2px;
+      font-size: 12px;
+      line-height: 1.1;
+    }
+    .slider-ticks span { text-align: center; }
+    .slider-ticks small { display: block; }
+
+    /* Slightly tighter on short displays */
+    @media (max-height: 820px) {
+      .q { margin: 6px 0; }
+      .q-title { margin-bottom: 2px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- jsPsych core + required plugins -->
+  <script src="./jspsych.js"></script>
+  <script src="./plugins/plugin-instructions.js"></script>
+  <script src="./plugins/plugin-preload.js"></script>
+  <!-- We use sliders inside a form -->
+  <script src="./plugins/plugin-survey-html-form.js"></script>
+  <!-- Optional: fullscreen -->
+  <script src="./plugins/plugin-fullscreen.js"></script>
+
+  <!-- Firebase (compat SDKs so they work in plain script tags) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+  <!-- 🔧 PASTE YOUR FIREBASE CONFIG VALUES HERE (from Firebase console → Settings → Your apps → Web app → Config) -->
+  <script>
+    window.FIREBASE_CONFIG = {
+      apiKey: "AIzaSyC3q8mReVXK75yirx1FM89e1y5TZyw0sIo",
+      authDomain: "my-height-study.firebaseapp.com",
+      databaseURL: "https://my-height-study-default-rtdb.firebaseio.com",
+      projectId: "my-height-study",
+      storageBucket: "my-height-study.appspot.com",   
+      messagingSenderId: "623828095541",
+      appId: "1:623828095541:web:a9bf0e779534230ab7977c"
+      // measurementId: "G-XXXX", // optional, not needed here
+    };
+  </script>
+
+  <!-- Your experiment (must be last) -->
+  <script src="./experiment.js"></script>
+</body>
+</html>
