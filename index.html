@@ -11,52 +11,62 @@
 
   <!-- Layout + slider styling -->
   <style>
-    html, body { height: 100%; margin: 0; }
-    .jspsych-content { max-width: 1000px; padding: 6px 14px; }
+  html, body { height: 100%; margin: 0; }
+  .jspsych-content { max-width: 1000px; padding: 6px 14px; }
 
-    /* Keep your image large */
-    .preamble-wrap { display: flex; justify-content: center; }
-    .stimulus-image {
-      max-width: 100%;
-      height: auto;
-      max-height: 42vh;   /* big image as you liked */
-      object-fit: contain;
-      border-radius: 8px;
-    }
-    .center { text-align: center; }
+  /* Big image, with clear separation before scales */
+  .preamble-wrap { display: flex; justify-content: center; margin-bottom: 28px; }
+  .stimulus-image {
+    max-width: 100%;
+    height: auto;
+    max-height: 42vh;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+  .center { text-align: center; }
 
-    /* Compact the question stack so all 4 fit without scrolling */
-    .q-block { margin-top: 8px; }
-    .q { margin: 8px 0; }
-    .q-title {
-      margin: 0 0 4px;
-      font-weight: 600;
-      font-size: 16px;
-      text-align: center;
-    }
+  /* Clear divider above the first scale group */
+  .q-block {
+    border-top: 2px solid #d5d5d5;
+    padding-top: 16px;
+    margin-top: 4px;
+  }
 
-    /* Slider row (like your example) */
-    .slider-row { max-width: 820px; margin: 0 auto 6px; }
-    .slider { width: 100%; }
+  /* Question block spacing */
+  .q { margin: 14px 0; }
+  .q-title {
+    margin: 0 0 6px;
+    font-weight: 700;
+    font-size: 18px; /* larger question text */
+    text-align: center;
+  }
 
-    /* Tick labels under each slider */
-    .slider-ticks {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 0;
-      margin-top: 2px;
-      font-size: 12px;
-      line-height: 1.1;
-    }
-    .slider-ticks span { text-align: center; }
-    .slider-ticks small { display: block; }
+  /* Slider row */
+  .slider-row { max-width: 820px; margin: 0 auto 10px; }
+  .slider { width: 100%; }  /* native browser styling (reverts the thicker custom look) */
 
-    /* Slightly tighter on short displays */
-    @media (max-height: 820px) {
-      .q { margin: 6px 0; }
-      .q-title { margin-bottom: 2px; }
-    }
-  </style>
+  /* === Tick labels === */
+  .slider-ticks {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+    margin-top: 6px;
+    font-size: 16px;      /* <-- numbers stay the same size */
+    line-height: 1.2;
+  }
+  .slider-ticks span { text-align: center; }
+  .slider-ticks small {
+    display: block;
+    font-size: 18px;      /* <-- slightly bigger “Not at all” / “Very” */
+    font-weight: 400;
+  }
+
+  /* Slightly tighter on short displays */
+  @media (max-height: 820px) {
+    .q { margin: 10px 0; }
+    .q-title { margin-bottom: 4px; }
+  }
+</style>
 </head>
 <body>
 
@@ -74,7 +84,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
-  <!-- 🔧 PASTE YOUR FIREBASE CONFIG VALUES HERE (from Firebase console → Settings → Your apps → Web app → Config) -->
+  <!-- 🔧 Your Firebase config -->
   <script>
     window.FIREBASE_CONFIG = {
       apiKey: "AIzaSyC3q8mReVXK75yirx1FM89e1y5TZyw0sIo",
@@ -84,7 +94,6 @@
       storageBucket: "my-height-study.appspot.com",   
       messagingSenderId: "623828095541",
       appId: "1:623828095541:web:a9bf0e779534230ab7977c"
-      // measurementId: "G-XXXX", // optional, not needed here
     };
   </script>
 

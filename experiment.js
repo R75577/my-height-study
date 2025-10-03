@@ -1,9 +1,8 @@
 /***********************
  * Perception Study (PNG images)
- * One image + four 1–7 sliders per trial (with “Not so much” / “Very” endpoints)
+ * One image + four 1–7 sliders per trial
  * Two blocks (Male / Female) — block order randomized; trials randomized within blocks
- * Saves each trial immediately to Firebase (/responses_stream) + full payload at end (/responses)
- * No local CSV downloads; optional CloudResearch redirect
+ * ❗ Saves ONLY at the very end (no partial/streaming saves)
  ***********************/
 
 /* ========= BASIC OPTIONS ========= */
@@ -13,7 +12,7 @@ const IMAGE_EXT = '.png';   // your files are PNG
 // Slider tick labels (1..7 with endpoint text)
 const tickRowHTML = `
   <div class="slider-ticks">
-    <span>1<br><small>Not so much</small></span>
+    <span>1<br><small>Not at all</small></span>
     <span>2</span><span>3</span><span>4</span><span>5</span><span>6</span>
     <span>7<br><small>Very</small></span>
   </div>`;
@@ -103,86 +102,29 @@ function ensureFirebaseAuth() {
 
 const db = firebase.database();
 
-// Stream a single trial row immediately (for partial-completer capture)
-async function saveTrialRow(row) {
-  try {
-    await db.ref('responses_stream').push(row);
-  } catch (e) {
-    console.warn('Partial save failed:', e);
-  }
-}
-
 /* ========= INIT JPSYCH ========= */
 
 const jsPsych = initJsPsych({
   show_progress_bar: true,
   message_progress_bar: 'Progress',
-
-  // STREAM EACH IMAGE TRIAL AS IT FINISHES
-  on_trial_finish: function (data) {
-    if (data.trial_type === 'survey-html-form') {
-      saveTrialRow({
-        participant_id,
-        createdAt: firebase.database.ServerValue.TIMESTAMP,
-        block: data.block,
-        image: data.image,
-        sex: data.sex,
-        face_id: data.face_id,
-        height_label: data.height_label,
-        attract_label: data.attract_label,
-        rt: data.rt,
-        Q1: Number(data.response?.Q1),
-        Q2: Number(data.response?.Q2),
-        Q3: Number(data.response?.Q3),
-        Q4: Number(data.response?.Q4)
-      });
-    }
-  },
-
-  // FINAL FULL SAVE (ONE RECORD PER PARTICIPANT)
-  on_finish: async function () {
-    const trials = jsPsych.data.get()
-      .filter({ trial_type: 'survey-html-form' })
-      .values()
-      .map(row => ({
-        block: row.block,
-        image: row.image,
-        sex: row.sex,
-        face_id: row.face_id,
-        height_label: row.height_label,
-        attract_label: row.attract_label,
-        rt: row.rt,
-        Q1: Number(row.response?.Q1),
-        Q2: Number(row.response?.Q2),
-        Q3: Number(row.response?.Q3),
-        Q4: Number(row.response?.Q4)
-      }));
-
-    const payload = {
-      participant_id,
-      trials,
-      client_version: 'v1',
-      createdAt: firebase.database.ServerValue.TIMESTAMP
-    };
-
-    try {
-      await db.ref('responses').push(payload);
-      console.log('Firebase final save OK');
-    } catch (e) {
-      console.error('Firebase final save failed:', e);
-      // No CSV fallback (you asked for no downloads)
-    }
-
-    if (CLOUDRESEARCH_COMPLETION_URL) {
-      setTimeout(() => { window.location.href = CLOUDRESEARCH_COMPLETION_URL; }, 1200);
-    }
-  }
+  // ❌ Removed on_trial_finish streaming; we only save at the end
 });
 
-// Participant ID (captures ?workerId, ?pid, or generates one)
+// Participant IDs (supports CloudResearch Connect params, MTurk/Prolific, or fallback UUID)
 const participant_id =
   getParam('pid') || getParam('workerId') || getParam('PROLIFIC_PID') || safeUUID();
-jsPsych.data.addProperties({ participant_id });
+const participantId = getParam('participantId') || '';  // CR Connect
+const assignmentId  = getParam('assignmentId')  || '';
+const projectId     = getParam('projectId')     || '';
+
+jsPsych.data.addProperties({ participant_id, participantId, assignmentId, projectId });
+
+/* ========= PREVENT ACCIDENTAL EXITS ========= */
+// Shows a native warning if user tries to close/reload mid-study
+window.addEventListener('beforeunload', (e) => {
+  e.preventDefault();
+  e.returnValue = '';
+});
 
 /* ========= PRELOAD ========= */
 
@@ -214,7 +156,8 @@ const instructions = {
   pages: [
     `<div class="center">
        <h2>Instructions</h2>
-       <p>On each screen, you will see <strong>one image</strong> and <strong>four questions</strong>.</p>
+       <p><strong>In this experiment, we will ask you to make judgments about a series of male and female images.</strong></p>
+       <p>On each screen, you will see <strong>one image</strong> and <strong>four questions</strong>. <strong>Please answer the questions based on your perception of the image.</strong></p>
        <p>Use the 1–7 scale for each question. All four answers are required.</p>
      </div>`
   ],
@@ -364,7 +307,48 @@ timeline.push(blocks[1].intro, ...blocks[1].trials);
 
 timeline.push(thankYou);
 
-// Ensure anonymous auth completes, then run
+// ===== FINAL SAVE ONLY (no streaming) =====
+function finalSave() {
+  const trials = jsPsych.data.get()
+    .filter({ trial_type: 'survey-html-form' })
+    .values()
+    .map(row => ({
+      block: row.block,
+      image: row.image,
+      sex: row.sex,
+      face_id: row.face_id,
+      height_label: row.height_label,
+      attract_label: row.attract_label,
+      rt: row.rt,
+      Q1: Number(row.response?.Q1),
+      Q2: Number(row.response?.Q2),
+      Q3: Number(row.response?.Q3),
+      Q4: Number(row.response?.Q4)
+    }));
+
+  const payload = {
+    participant_id,
+    participantId,
+    assignmentId,
+    projectId,
+    trials,
+    client_version: 'v2',
+    createdAt: firebase.database.ServerValue.TIMESTAMP
+  };
+
+  return db.ref('responses').push(payload);
+}
+
+// Ensure anonymous auth completes, then run and save
 ensureFirebaseAuth().finally(() => {
-  jsPsych.run(timeline);
+  jsPsych.run(timeline).then(async () => {
+    try {
+      await finalSave(); // ✅ only here
+      if (CLOUDRESEARCH_COMPLETION_URL) {
+        setTimeout(() => { window.location.href = CLOUDRESEARCH_COMPLETION_URL; }, 1200);
+      }
+    } catch (e) {
+      console.error('Firebase final save failed:', e);
+    }
+  });
 });
