@@ -197,6 +197,7 @@ function sliderHTML(name, prompt) {
     </div>`;
 }
 
+// ⬇️⬇️⬇️ REPLACED: adds per-question active manipulation time (Q*_interact_ms)
 function makeImageTrial(blockLabel, imgPath) {
   const htmlBlock = `
     <div class="q-block">
@@ -205,6 +206,10 @@ function makeImageTrial(blockLabel, imgPath) {
       ${sliderHTML('Q3', questionTexts[2])}
       ${sliderHTML('Q4', questionTexts[3])}
     </div>`;
+
+  // accumulators for "active manipulation" time (ms)
+  const interact = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+  const activeSince = { Q1: null, Q2: null, Q3: null, Q4: null };
 
   return {
     type: jsPsychSurveyHtmlForm,
@@ -218,6 +223,7 @@ function makeImageTrial(blockLabel, imgPath) {
       image: imgPath,
       ...parseMeta(imgPath)
     },
+
     // Require interacting with every slider before enabling Continue.
     // Counts a click on "4" as answered.
     on_load: () => {
@@ -246,24 +252,95 @@ function makeImageTrial(blockLabel, imgPath) {
         msg.style.display = ok ? 'none' : 'block';
       }
 
-      // Mark as answered on ANY interaction (including click on current value)
+      // === Active-manipulation helpers ===
+      function startActive(name){
+        // stop any other active slider to avoid overlap
+        stopAll();
+        if (activeSince[name] == null) {
+          activeSince[name] = performance.now();
+        }
+      }
+      function stopActive(name){
+        if (activeSince[name] != null) {
+          interact[name] += performance.now() - activeSince[name];
+          activeSince[name] = null;
+        }
+      }
+      function stopAll(){ ['Q1','Q2','Q3','Q4'].forEach(stopActive); }
+
+      // Keep your "must touch all" gate (first touch unlocks)
       sliders.forEach(s => {
         const mark = () => { s.dataset.touched = '1'; checkAllTouched(); };
 
-        s.addEventListener('input', mark,       { once: true });
-        s.addEventListener('change', mark,      { once: true });
+        s.addEventListener('input',       mark, { once: true });
+        s.addEventListener('change',      mark, { once: true });
         s.addEventListener('pointerdown', mark, { once: true });
-        s.addEventListener('mousedown', mark,   { once: true });
-        s.addEventListener('touchstart', mark,  { once: true });
-        s.addEventListener('focus', mark,       { once: true });
-        s.addEventListener('keydown', mark,     { once: true });
+        s.addEventListener('mousedown',   mark, { once: true });
+        s.addEventListener('touchstart',  mark, { once: true });
+        s.addEventListener('focus',       mark, { once: true });
+        s.addEventListener('keydown',     mark, { once: true });
       });
+
+      // Bind timing events per slider (engage → release)
+      sliders.forEach(s => {
+        const name = s.name; // "Q1".."Q4"
+
+        const onStart = () => { startActive(name); };
+        const onStop  = ()  => { stopActive(name); };
+
+        // Engage events (mouse/touch/keyboard/focus)
+        s.addEventListener('pointerdown', onStart);
+        s.addEventListener('mousedown',   onStart);
+        s.addEventListener('touchstart',  onStart, { passive: true });
+        s.addEventListener('keydown',     onStart);
+        s.addEventListener('focus',       onStart);
+
+        // Release/leave events
+        s.addEventListener('pointerup',   onStop);
+        s.addEventListener('mouseup',     onStop);
+        s.addEventListener('touchend',    onStop);
+        s.addEventListener('keyup',       onStop);
+        s.addEventListener('blur',        onStop);
+        s.addEventListener('mouseleave',  onStop);
+      });
+
+      // If they switch tabs or the page hides, stop any active timers
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) ['Q1','Q2','Q3','Q4'].forEach(stopActive);
+      });
+
+      // On submit, finalize timers and stash for on_finish
+      btn.addEventListener('click', () => {
+        ['Q1','Q2','Q3','Q4'].forEach(stopActive);
+        document.body.dataset.interactTimes = JSON.stringify({
+          Q1: Math.round(interact.Q1),
+          Q2: Math.round(interact.Q2),
+          Q3: Math.round(interact.Q3),
+          Q4: Math.round(interact.Q4)
+        });
+      }, { once: true });
 
       checkAllTouched();
     }
     // RT is recorded automatically as "rt"
+
+    ,on_finish: (data) => {
+      // attach interact times (ms) to the trial row
+      try {
+        const t = JSON.parse(document.body.dataset.interactTimes || '{}');
+        data.Q1_interact_ms = t.Q1 ?? null;
+        data.Q2_interact_ms = t.Q2 ?? null;
+        data.Q3_interact_ms = t.Q3 ?? null;
+        data.Q4_interact_ms = t.Q4 ?? null;
+      } catch (_) {
+        data.Q1_interact_ms = data.Q2_interact_ms =
+        data.Q3_interact_ms = data.Q4_interact_ms = null;
+      }
+      // data.rt (page-level) remains unchanged
+    }
   };
 }
+// ⬆️⬆️⬆️ END replacement
 
 function makeBlockTrials(label, paths) {
   const trials = paths.map(p => makeImageTrial(label, p));
@@ -319,11 +396,21 @@ function finalSave() {
       face_id: row.face_id,
       height_label: row.height_label,
       attract_label: row.attract_label,
+
+      // built-in page RT
       rt: row.rt,
+
+      // slider responses
       Q1: Number(row.response?.Q1),
       Q2: Number(row.response?.Q2),
       Q3: Number(row.response?.Q3),
-      Q4: Number(row.response?.Q4)
+      Q4: Number(row.response?.Q4),
+
+      // NEW: per-question active manipulation time (ms)
+      Q1_interact_ms: row.Q1_interact_ms ?? null,
+      Q2_interact_ms: row.Q2_interact_ms ?? null,
+      Q3_interact_ms: row.Q3_interact_ms ?? null,
+      Q4_interact_ms: row.Q4_interact_ms ?? null
     }));
 
   const payload = {
@@ -332,7 +419,7 @@ function finalSave() {
     assignmentId,
     projectId,
     trials,
-    client_version: 'v2',
+    client_version: 'v2', // keep/adjust as you wish
     createdAt: firebase.database.ServerValue.TIMESTAMP
   };
 
