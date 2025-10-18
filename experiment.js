@@ -157,8 +157,9 @@ const instructions = {
     `<div class="center">
        <h2>Instructions</h2>
        <p><strong>In this experiment, we will ask you to make judgments about a series of male and female images.</strong></p>
-       <p>On each screen, you will see <strong>one image</strong> and <strong>four questions</strong>. <strong>Please answer the questions based on your perception of the image.</strong></p>
-       <p>Use the 1–7 scale for each question. All four answers are required.</p>
+       <p>On each screen, you will see one image and four questions. <strong>Please answer the questions based on your perception of the image.</strong></p>
+       <p>Use the 1–7 scale for each question. <strong>The scale is pre-set to 4 by default. However, you must still click or tap on your chosen response — including 4 — to record your answer<strong>. <p>
+       <p>All four answers are required.</p>
      </div>`
   ],
   show_clickable_nav: true,
